@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Audio Playlist</title>
+  <link rel="stylesheet" href="styles/main.css" />
+</head>
+<body>
+  <main class="app">
+    <header class="app__header">
+      <h1>Audio Index</h1>
+      <p>All tracks in <code>./audio</code> (including subfolders).</p>
+    </header>
+
+    <section class="controls" aria-label="Playback controls">
+      <button id="playBtn" type="button">Play</button>
+      <button id="stopBtn" type="button">Stop</button>
+      <button id="refreshBtn" type="button">Refresh List</button>
+      <p id="status" class="status">Loading tracks…</p>
+    </section>
+
+    <section class="now-playing" aria-live="polite">
+      <h2>Now Playing</h2>
+      <p id="nowPlaying">Nothing playing</p>
+      <audio id="player" controls preload="metadata"></audio>
+    </section>
+
+    <section>
+      <h2>Playlist (drag to reorder)</h2>
+      <ol id="playlist" class="playlist"></ol>
+    </section>
+  </main>
+
+  <script src="script/main.js" defer></script>
+</body>
+</html>
