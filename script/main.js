@@ -14,6 +14,8 @@ let tracks = [];
 let currentIndex = -1;
 let isStopped = true;
 
+const audioRootUrl = new URL(AUDIO_ROOT, window.location.href);
+
 const prettifyName = (path) => {
   const fileName = decodeURIComponent(path.split("/").pop() ?? path);
   return fileName.replace(/\.[^.]+$/, "");
@@ -21,35 +23,40 @@ const prettifyName = (path) => {
 
 const isAudioPath = (path) => AUDIO_EXTENSIONS.some((ext) => path.toLowerCase().endsWith(ext));
 
-const normalizePath = (base, href) => {
-  const url = new URL(href, new URL(base, window.location.href));
+const normalizeAudioPath = (href, base) => {
+  const url = new URL(href, base);
+
   if (url.origin !== window.location.origin) {
     return null;
   }
 
-  const currentDir = window.location.pathname.replace(/[^/]*$/, "");
-  if (!url.pathname.startsWith(`${currentDir}${AUDIO_ROOT}`)) {
+  if (!url.pathname.startsWith(audioRootUrl.pathname)) {
     return null;
   }
 
-  return `${url.pathname.slice(currentDir.length)}${url.search}`;
+  return `${url.pathname.slice(audioRootUrl.pathname.length - AUDIO_ROOT.length)}${url.search}`;
 };
 
 async function crawlDirectory(relativePath = AUDIO_ROOT, seen = new Set()) {
-  if (seen.has(relativePath)) {
+  const dirUrl = new URL(relativePath, window.location.href);
+  const canonicalKey = `${dirUrl.pathname}${dirUrl.search}`;
+
+  if (seen.has(canonicalKey)) {
     return [];
   }
-  seen.add(relativePath);
+  seen.add(canonicalKey);
 
   let html;
   try {
-    const response = await fetch(relativePath, { cache: "no-store" });
+    const response = await fetch(dirUrl.toString(), { cache: "no-store" });
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
     html = await response.text();
   } catch (error) {
-    throw new Error(`Cannot read "${relativePath}". Serve this site with directory listing enabled. (${error.message})`);
+    throw new Error(
+      `Cannot read "${relativePath}". Run with a static server that allows listing the audio directory. (${error.message})`,
+    );
   }
 
   const doc = new DOMParser().parseFromString(html, "text/html");
@@ -63,8 +70,8 @@ async function crawlDirectory(relativePath = AUDIO_ROOT, seen = new Set()) {
       continue;
     }
 
-    const normalized = normalizePath(relativePath, href);
-    if (!normalized || normalized === relativePath) {
+    const normalized = normalizeAudioPath(href, dirUrl);
+    if (!normalized) {
       continue;
     }
 
@@ -118,7 +125,7 @@ function loadTrack(index, autoplay = true) {
   currentIndex = index;
   const track = tracks[currentIndex];
 
-  playerElement.src = encodeURI(track.path);
+  playerElement.src = track.path;
   nowPlayingElement.textContent = `${track.title} (${track.path})`;
   updateActiveTrack();
 
@@ -159,7 +166,7 @@ function goToNextTrack() {
 }
 
 function reorderTracks(fromIndex, toIndex) {
-  if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) {
+  if (fromIndex === toIndex || Number.isNaN(fromIndex) || Number.isNaN(toIndex) || fromIndex < 0 || toIndex < 0) {
     return;
   }
 
